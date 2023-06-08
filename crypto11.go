@@ -90,6 +90,7 @@ package crypto11
 import (
 	"crypto"
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"os"
@@ -331,7 +332,7 @@ func Configure(config *Config) (*Context, error) {
 
 	// Only Initialize if we are the first Context using the library
 	if numExistingContexts == 0 {
-		if err := instance.ctx.Initialize(); err != nil {
+		if err := instance.ctx.Initialize(); err != nil && !stderrors.Is(err, pkcs11.Error(pkcs11.CKR_CRYPTOKI_ALREADY_INITIALIZED)) {
 			instance.ctx.Destroy()
 			return nil, errors.WithMessage(err, "failed to initialize PKCS#11 library")
 		}
@@ -475,7 +476,7 @@ func (c *Context) Close() error {
 	// If we were the last Context, finalize the library
 	if count == 1 {
 		err := c.ctx.Finalize()
-		if err != nil {
+		if err != nil && !stderrors.Is(err, pkcs11.Error(pkcs11.CKR_CRYPTOKI_NOT_INITIALIZED)) {
 			return err
 		}
 	}
